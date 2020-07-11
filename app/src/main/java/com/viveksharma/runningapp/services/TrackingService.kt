@@ -32,8 +32,13 @@ import com.viveksharma.runningapp.other.Constants.LOCATION_UPDATE_INTERVAL
 import com.viveksharma.runningapp.other.Constants.NOTIFICATION_CHANNEL_ID
 import com.viveksharma.runningapp.other.Constants.NOTIFICATION_CHANNEL_NAME
 import com.viveksharma.runningapp.other.Constants.NOTIFICATION_ID
+import com.viveksharma.runningapp.other.Constants.TIMER_UPDATE_INTERVAL
 import com.viveksharma.runningapp.other.TrackingUtility
 import com.viveksharma.runningapp.ui.MainActivity
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers.Main
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import timber.log.Timber
 
 typealias Polyline = MutableList<LatLng>            //line consist of LatLng
@@ -45,7 +50,10 @@ class TrackingService : LifecycleService() {
 
     lateinit var fusedLocationProviderClient: FusedLocationProviderClient
 
+    private val timeRunInSeconds = MutableLiveData<Long>()
+
     companion object {
+        val timeRunInMills = MutableLiveData<Long>()
         val isTracking = MutableLiveData<Boolean>()
         val pathPoints = MutableLiveData<Polylines>()
     }
@@ -53,12 +61,13 @@ class TrackingService : LifecycleService() {
     private fun postInitialValues() {
         isTracking.postValue(false)
         pathPoints.postValue(mutableListOf())
+        timeRunInSeconds.postValue(0L)
+        timeRunInMills.postValue(0L)
     }
 
     override fun onCreate() {
         super.onCreate()
         postInitialValues()
-        Timber.d("isTracking: ${isTracking.value}, pathPoints: ${pathPoints.value}")
         fusedLocationProviderClient = FusedLocationProviderClient(this)
 
         isTracking.observe(this, Observer {
@@ -75,7 +84,7 @@ class TrackingService : LifecycleService() {
                         isFirstRun = false
                     } else {
                         Timber.d("Resuming service ...")
-                        startForegroundService()
+                        startTimer()
                     }
                 }
                 ACTION_PAUSE_SERVICE -> {
@@ -87,12 +96,40 @@ class TrackingService : LifecycleService() {
                 }
             }
         }
-
         return super.onStartCommand(intent, flags, startId)
+    }
+
+    private var isTimerEnabled = false
+    private var lapTime = 0L
+    private var timeRun = 0L
+    private var timeStarted = 0L
+    private var lastSecondTimestamp = 0L
+
+    private fun startTimer() {                  //this method will be called when we start or resume the service
+        addEmptyPolyline()
+        isTracking.postValue(true)
+        timeStarted = System.currentTimeMillis()
+        isTimerEnabled = true
+
+        CoroutineScope(Main).launch {
+            while (isTracking.value!!) {
+                //time diff between now and timeStarted
+                lapTime = System.currentTimeMillis() - timeStarted
+                //post the new lap time
+                timeRunInMills.postValue(timeRun + lapTime)
+                if (timeRunInMills.value!! >= lastSecondTimestamp + 1000L) {
+                    timeRunInSeconds.postValue(timeRunInSeconds.value!! + 1)
+                    lastSecondTimestamp += 1000L
+                }
+                delay(TIMER_UPDATE_INTERVAL)
+            }
+            timeRun += lapTime
+        }
     }
 
     private fun pauseService() {
         isTracking.postValue(false)
+        isTimerEnabled = false
     }
 
     @SuppressLint("MissingPermission")
@@ -147,9 +184,8 @@ class TrackingService : LifecycleService() {
     } ?: pathPoints.postValue(mutableListOf(mutableListOf()))
 
     private fun startForegroundService() {
-        addEmptyPolyline()
+        startTimer()
         isTracking.postValue(true)
-        Timber.d("isTracking: ${isTracking.value}, pathPoints: ${pathPoints.value}")
 
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE)
                 as NotificationManager

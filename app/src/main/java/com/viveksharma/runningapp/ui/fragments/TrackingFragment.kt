@@ -15,11 +15,14 @@ import com.viveksharma.runningapp.other.Constants.ACTION_START_OR_RESUME_SERVICE
 import com.viveksharma.runningapp.other.Constants.MAP_ZOOM
 import com.viveksharma.runningapp.other.Constants.POLYLINE_COLOR
 import com.viveksharma.runningapp.other.Constants.POLYLINE_WIDTH
+import com.viveksharma.runningapp.other.TrackingUtility
 import com.viveksharma.runningapp.services.Polyline
 import com.viveksharma.runningapp.services.TrackingService
 import com.viveksharma.runningapp.ui.viewmodels.MainViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.android.synthetic.main.fragment_tracking.*
+import kotlinx.coroutines.processNextEventInCurrentThread
+import timber.log.Timber
 
 @AndroidEntryPoint
 class TrackingFragment : Fragment(R.layout.fragment_tracking) {
@@ -30,6 +33,8 @@ class TrackingFragment : Fragment(R.layout.fragment_tracking) {
     private var pathPoints = mutableListOf<Polyline>()
 
     private var map: GoogleMap? = null
+
+    private var curTimeInMillis = 0L
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -47,13 +52,21 @@ class TrackingFragment : Fragment(R.layout.fragment_tracking) {
 
     private fun subscribeToObservers() {
         TrackingService.isTracking.observe(viewLifecycleOwner, Observer {
+            Timber.d("$it")
             updateTracking(it)
         })
 
         TrackingService.pathPoints.observe(viewLifecycleOwner, Observer {
+            Timber.d("$it")
             pathPoints = it
             addLatestPolyline()
             moveCameraToUser()
+        })
+
+        TrackingService.timeRunInMills.observe(viewLifecycleOwner, Observer {
+            curTimeInMillis = it
+            val formattedTime = TrackingUtility.getFormattedStopWatchTime(curTimeInMillis, true)
+            tvTimer.text = formattedTime
         })
     }
 
