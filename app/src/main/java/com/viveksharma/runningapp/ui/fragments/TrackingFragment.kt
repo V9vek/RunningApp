@@ -14,7 +14,6 @@ import com.google.android.gms.maps.model.PolylineOptions
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import com.viveksharma.runningapp.R
-import com.viveksharma.runningapp.adapters.RunAdapter
 import com.viveksharma.runningapp.db.Run
 import com.viveksharma.runningapp.other.Constants.ACTION_PAUSE_SERVICE
 import com.viveksharma.runningapp.other.Constants.ACTION_START_OR_RESUME_SERVICE
