@@ -59,4 +59,5 @@ class MainActivity : AppCompatActivity() {
             navHostFragment.findNavController().navigate(R.id.action_global_trackingFragment)
         }
     }
+
 }
