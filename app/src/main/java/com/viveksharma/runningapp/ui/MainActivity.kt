@@ -45,8 +45,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setToolbarDetails() {
-        val toolbarName = "Let's go $name!"
-        tvToolbarTitle.text = toolbarName
+        val toolbarTitle = "Let's go $name!"
+        tvToolbarTitle.text = toolbarTitle
     }
 
     override fun onNewIntent(intent: Intent?) {
